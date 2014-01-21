@@ -1618,7 +1618,39 @@ Value gettransaction(const Array& params, bool fHelp)
 
     return entry;
 }
+void TransactionToJSON(const CTransaction& tx, Array& ret);
 
+Value getanytransaction(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+            "getanytransaction <txid>\n"
+            "Get information about <txid>. (Not restricted to wallet)");
+
+    uint256 hash;
+    hash.SetHex(params[0].get_str());
+
+    // construct COutPoint to satisfy ReadFromDisk method
+    COutPoint dummyOutp(hash, 0);
+    CMerkleTx mtx;
+    if (!mtx.ReadFromDisk(dummyOutp))
+        throw JSONRPCError(-5, "Invalid or not-yet-in-blockchain transaction id");
+    if (!mtx.SetMerkleBranch(NULL))
+        throw JSONRPCError(-5, "Could not obtain transaction information");
+/*
+    Object entry;
+    entry.push_back(Pair("confirmations", mtx.GetDepthInMainChain()));
+    entry.push_back(Pair("txid", mtx.GetHash().GetHex()));
+    entry.push_back(Pair("orphaned", int(!mtx.IsInMainChain())));
+    return entry;
+*/
+    Object entry;
+    Array tx;
+    TransactionToJSON(mtx, tx);
+    entry.push_back(Pair("transaction", tx));
+    entry.push_back(Pair("confirmations", mtx.GetDepthInMainChain()));
+    return entry;
+}
 
 Value backupwallet(const Array& params, bool fHelp)
 {
@@ -2477,7 +2509,8 @@ static const CRPCCommand vRPCCommands[] =
     { "addmultisigaddress",     &addmultisigaddress,     false },
     { "getblock",               &getblock,               false },
     { "getblockhash",           &getblockhash,           false },
-    { "gettransaction",         &gettransaction,         false },
+    { "gettransaction",         &getanytransaction,      false },
+    { "gettransaction-orig",    &gettransaction,      false },
     { "listtransactions",       &listtransactions,       false },
     { "signmessage",            &signmessage,            false },
     { "verifymessage",          &verifymessage,          false },
@@ -3196,6 +3229,97 @@ int CommandLineRPC(int argc, char *argv[])
         fprintf((nRet == 0 ? stdout : stderr), "%s\n", strPrint.c_str());
     }
     return nRet;
+}
+
+void TransactionToJSON(const CTransaction& tx, Array& ret)
+{
+    Object entry;
+    entry.push_back(Pair("txid", tx.GetHash().GetHex()));
+    entry.push_back(Pair("confirmations", 0));
+    Array outpoints;
+    Array inpoints;
+    BOOST_FOREACH(const CTxOut& outpoint, tx.vout)
+    {
+        Object outp;
+        outp.push_back(Pair("pubkey", outpoint.scriptPubKey.ToString().c_str()));
+        CBitcoinAddress addr;
+        if (ExtractAddress(outpoint.scriptPubKey,addr)){
+            if (addr.IsValid()) {
+                outp.push_back(Pair("bitcoinaddress", addr.ToString().c_str()));
+            }
+            else {
+                printf("Could not obtain valid BitcoinAddress!\n");
+                outp.push_back(Pair("bitcoinaddress", "none"));
+            }
+        }
+        else {
+            printf("Could not extract BitcoinAddress!\n");
+            outp.push_back(Pair("bitcoinaddress", "none"));
+        }
+        outp.push_back(Pair("value", strprintf("%"PRI64d, outpoint.nValue)));
+        outpoints.push_back(outp);
+    }
+    if (!tx.IsCoinBase())
+    {
+        BOOST_FOREACH(const CTxIn& inpoint, tx.vin)
+        {
+            COutPoint prevout = inpoint.prevout;
+            // printf("Prev Outpoint Hash: %s, sequence %d\n", prevout.hash.ToString().c_str(), prevout.n);
+
+            // Read txPrev
+            CTransaction txPrev;
+            bool bFound = false;
+
+            //{
+                //LOCK(cs_mapTransactions);
+                // Get prev tx from memory
+                //if (mapTransactions.count(prevout.hash))
+                //{
+                //    bFound = true;
+                //    txPrev = mapTransactions[prevout.hash];
+                //}
+            //}
+            if (!bFound) {
+                // Get prev tx from disk
+                bFound = txPrev.ReadFromDisk(prevout);
+            }
+
+            if (bFound) {
+                if (!txPrev.IsCoinBase()) {
+                    // printf("Getting txOut, index %d...\n", prevout.n);
+                    CTxOut& txOut = txPrev.vout[prevout.n];
+
+                    Object inp;
+                    CBitcoinAddress addr;
+                    if (ExtractAddress(txOut.scriptPubKey,addr)){
+                        if (addr.IsValid()) {
+                            inp.push_back(Pair("bitcoinaddress", addr.ToString().c_str()));
+                        }
+                        else {
+                            printf("Could not obtain valid BitcoinAddress!\n");
+                            inp.push_back(Pair("bitcoinaddress", "none"));
+                        }
+                    }
+                    else {
+                        printf("Could not extract BitcoinAddress!\n");
+                        inp.push_back(Pair("bitcoinaddress", "none"));
+                    }
+                    inp.push_back(Pair("pubkey", txOut.scriptPubKey.ToString().c_str()));
+                    inp.push_back(Pair("value", strprintf("%"PRI64d, txOut.nValue)));
+                    inpoints.push_back(inp);
+                }
+                else {
+                    // printf("Prev Transaction is coinbase. Skipping input...\n");
+                }
+            }
+            else {
+                printf("Could not find previous transaction %s on disk or in memory\n", prevout.hash.ToString().c_str());
+            }
+        }
+    }
+    entry.push_back(Pair("outpoints", outpoints));
+    entry.push_back(Pair("inpoints", inpoints));
+    ret.push_back(entry);
 }
 
 

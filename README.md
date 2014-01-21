@@ -1,5 +1,5 @@
 
-PPCoin Official Development Repo
+PPCoin Experimental Branch Repo by snakie
 ================================
 
 ### What is PPCoin?
