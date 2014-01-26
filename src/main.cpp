@@ -494,6 +494,14 @@ bool CTransaction::CheckTransaction() const
     return true;
 }
 
+static void
+runCommand(std::string strCommand)
+{
+    int nErr = ::system(strCommand.c_str());
+    if (nErr)
+        printf("runCommand error: system(%s) returned %d\n", strCommand.c_str(), nErr);
+}
+
 bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
                         bool* pfMissingInputs)
 {
@@ -636,6 +644,14 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
         EraseFromWallets(ptxOld->GetHash());
 
     printf("CTxMemPool::accept() : accepted %s\n", hash.ToString().substr(0,10).c_str());
+    // notify an external script when a wallet transaction comes in or is updat
+    std::string strCmd = GetArg("-txaccept", "");
+ 
+    if ( !strCmd.empty())
+      {
+       boost::replace_all(strCmd, "%s", hash.GetHex());
+       boost::thread t(runCommand, strCmd); // thread runs free
+     }
     return true;
 }
 
@@ -1549,13 +1565,6 @@ bool Reorganize(CTxDB& txdb, CBlockIndex* pindexNew)
 }
 
 
-static void
-runCommand(std::string strCommand)
-{
-    int nErr = ::system(strCommand.c_str());
-    if (nErr)
-        printf("runCommand error: system(%s) returned %d\n", strCommand.c_str(), nErr);
-}
 
 // Called from inside SetBestChain: attaches a block to the new best chain being built
 bool CBlock::SetBestChainInner(CTxDB& txdb, CBlockIndex *pindexNew)
