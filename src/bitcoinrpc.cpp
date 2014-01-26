@@ -3285,7 +3285,6 @@ void TransactionToJSON(const CTransaction& tx, Array& ret)
             }
 
             if (bFound) {
-                if (!txPrev.IsCoinBase()) {
                     // printf("Getting txOut, index %d...\n", prevout.n);
                     CTxOut& txOut = txPrev.vout[prevout.n];
 
@@ -3307,10 +3306,6 @@ void TransactionToJSON(const CTransaction& tx, Array& ret)
                     inp.push_back(Pair("pubkey", txOut.scriptPubKey.ToString().c_str()));
                     inp.push_back(Pair("value", strprintf("%"PRI64d, txOut.nValue)));
                     inpoints.push_back(inp);
-                }
-                else {
-                    // printf("Prev Transaction is coinbase. Skipping input...\n");
-                }
             }
             else {
                 printf("Could not find previous transaction %s on disk or in memory\n", prevout.hash.ToString().c_str());
