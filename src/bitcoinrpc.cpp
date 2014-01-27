@@ -3233,9 +3233,13 @@ int CommandLineRPC(int argc, char *argv[])
 
 void TransactionToJSON(const CTransaction& tx, Array& ret)
 {
+    CTxDB txdb("r");
+    uint64 coinage; 
+    tx.GetCoinAge(txdb,coinage);
     Object entry;
     entry.push_back(Pair("txid", tx.GetHash().GetHex()));
     entry.push_back(Pair("time", (boost::int64_t)tx.GetTxTime()));
+    entry.push_back(Pair("coindays", (boost::uint64_t)coinage));
     entry.push_back(Pair("confirmations", 0));
     Array outpoints;
     Array inpoints;
