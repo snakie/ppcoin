@@ -3235,6 +3235,7 @@ void TransactionToJSON(const CTransaction& tx, Array& ret)
 {
     Object entry;
     entry.push_back(Pair("txid", tx.GetHash().GetHex()));
+    entry.push_back(Pair("time", (boost::int64_t)tx.GetTxTime()));
     entry.push_back(Pair("confirmations", 0));
     Array outpoints;
     Array inpoints;
@@ -3308,7 +3309,7 @@ void TransactionToJSON(const CTransaction& tx, Array& ret)
                     inpoints.push_back(inp);
             }
             else {
-                printf("Could not find previous transaction %s on disk or in memory\n", prevout.hash.ToString().c_str());
+                printf("Could not find previous transaction %s on disk\n", prevout.hash.ToString().c_str());
             }
         }
     }

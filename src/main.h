@@ -473,6 +473,11 @@ public:
     {
         return SerializeHash(*this);
     }
+    int64 GetTxTime() const
+    {
+        return nTime;
+
+    }
 
     bool IsFinal(int nBlockHeight=0, int64 nBlockTime=0) const
     {
