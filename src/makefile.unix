@@ -37,10 +37,10 @@ LIBS += \
 ifndef USE_UPNP
 	override USE_UPNP = -
 endif
-ifneq (${USE_UPNP}, -)
-	LIBS += -l miniupnpc
-	DEFS += -DUSE_UPNP=$(USE_UPNP)
-endif
+#ifneq (${USE_UPNP}, -)
+#	LIBS += -l miniupnpc
+#	DEFS += -DUSE_UPNP=$(USE_UPNP)
+#endif
 
 LIBS+= \
  -Wl,-B$(LMODE2) \
