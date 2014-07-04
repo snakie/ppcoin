@@ -3246,20 +3246,20 @@ void TransactionToJSON(const CTransaction& tx, Array& ret)
     BOOST_FOREACH(const CTxOut& outpoint, tx.vout)
     {
         Object outp;
-        outp.push_back(Pair("pubkey", outpoint.scriptPubKey.ToString().c_str()));
+        outp.push_back(Pair("scriptpubkey", outpoint.scriptPubKey.ToString().c_str()));
         CBitcoinAddress addr;
         if (ExtractAddress(outpoint.scriptPubKey,addr)){
             if (addr.IsValid()) {
-                outp.push_back(Pair("bitcoinaddress", addr.ToString().c_str()));
+                outp.push_back(Pair("peercoinaddress", addr.ToString().c_str()));
             }
             else {
                 printf("Could not obtain valid BitcoinAddress!\n");
-                outp.push_back(Pair("bitcoinaddress", "none"));
+                outp.push_back(Pair("peercoinaddress", "none"));
             }
         }
         else {
             printf("Could not extract BitcoinAddress!\n");
-            outp.push_back(Pair("bitcoinaddress", "none"));
+            outp.push_back(Pair("peercoinaddress", "none"));
         }
         outp.push_back(Pair("value", strprintf("%"PRI64d, outpoint.nValue)));
         outpoints.push_back(outp);
@@ -3284,6 +3284,7 @@ void TransactionToJSON(const CTransaction& tx, Array& ret)
                 //    txPrev = mapTransactions[prevout.hash];
                 //}
             //}
+
             if (!bFound) {
                 // Get prev tx from disk
                 bFound = txPrev.ReadFromDisk(prevout);
@@ -3292,23 +3293,26 @@ void TransactionToJSON(const CTransaction& tx, Array& ret)
             if (bFound) {
                     // printf("Getting txOut, index %d...\n", prevout.n);
                     CTxOut& txOut = txPrev.vout[prevout.n];
-
                     Object inp;
+                    inp.push_back(Pair("previoustx", prevout.hash.ToString().c_str()));
+                    inp.push_back(Pair("scriptsig", inpoint.scriptSig.ToString().c_str()));
+                    inp.push_back(Pair("previoustxindex", (int)prevout.n));
+
                     CBitcoinAddress addr;
                     if (ExtractAddress(txOut.scriptPubKey,addr)){
                         if (addr.IsValid()) {
-                            inp.push_back(Pair("bitcoinaddress", addr.ToString().c_str()));
+                            inp.push_back(Pair("peercoinaddress", addr.ToString().c_str()));
                         }
                         else {
                             printf("Could not obtain valid BitcoinAddress!\n");
-                            inp.push_back(Pair("bitcoinaddress", "none"));
+                            inp.push_back(Pair("peercoinaddress", "none"));
                         }
                     }
                     else {
                         printf("Could not extract BitcoinAddress!\n");
                         inp.push_back(Pair("bitcoinaddress", "none"));
                     }
-                    inp.push_back(Pair("pubkey", txOut.scriptPubKey.ToString().c_str()));
+                    inp.push_back(Pair("scriptpubkey", txOut.scriptPubKey.ToString().c_str()));
                     inp.push_back(Pair("value", strprintf("%"PRI64d, txOut.nValue)));
                     inpoints.push_back(inp);
             }
